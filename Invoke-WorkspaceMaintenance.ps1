@@ -269,6 +269,11 @@ function Write-MenuItem {
     Write-Host $Item.Label -ForegroundColor $color
 }
 
+function Clear-ConsoleLine {
+    $width = [Math]::Max(1, [Console]::BufferWidth - 1)
+    Write-Host (" " * $width) -NoNewline
+}
+
 function Invoke-ArrowMenu {
     param(
         [Parameter(Mandatory = $true)]
@@ -285,48 +290,81 @@ function Invoke-ArrowMenu {
     }
 
     $selectedIndex = 0
+    Clear-Host
+    $menuTop = [Console]::CursorTop
 
-    while ($true) {
-        Clear-Host
+    function Render-Menu {
+        [Console]::SetCursorPosition(0, $menuTop)
+        Clear-ConsoleLine
+        [Console]::SetCursorPosition(0, $menuTop)
         Write-Info $Title
+
+        [Console]::SetCursorPosition(0, $menuTop + 1)
+        Clear-ConsoleLine
         Write-Host ""
 
         for ($i = 0; $i -lt $Items.Count; $i++) {
+            [Console]::SetCursorPosition(0, $menuTop + 2 + $i)
+            Clear-ConsoleLine
+            [Console]::SetCursorPosition(0, $menuTop + 2 + $i)
             $item = $Items[$i]
             Write-MenuItem -Item $item -Selected ($i -eq $selectedIndex)
         }
 
+        $footerTop = $menuTop + 2 + $Items.Count
+        [Console]::SetCursorPosition(0, $footerTop)
+        Clear-ConsoleLine
         Write-Host ""
+        [Console]::SetCursorPosition(0, $footerTop + 1)
+        Clear-ConsoleLine
+        [Console]::SetCursorPosition(0, $footerTop + 1)
         Write-Host $Footer -ForegroundColor DarkGray
+    }
 
-        $key = [Console]::ReadKey($true)
-        switch ($key.Key) {
-            "UpArrow" {
-                if ($selectedIndex -gt 0) {
-                    $selectedIndex--
+    $previousCursorVisible = [Console]::CursorVisible
+    [Console]::CursorVisible = $false
+
+    try {
+        Render-Menu
+
+        while ($true) {
+            $key = [Console]::ReadKey($true)
+            switch ($key.Key) {
+                "UpArrow" {
+                    if ($selectedIndex -gt 0) {
+                        $selectedIndex--
+                    }
+                    else {
+                        $selectedIndex = $Items.Count - 1
+                    }
+                    Render-Menu
                 }
-                else {
-                    $selectedIndex = $Items.Count - 1
+                "DownArrow" {
+                    if ($selectedIndex -lt ($Items.Count - 1)) {
+                        $selectedIndex++
+                    }
+                    else {
+                        $selectedIndex = 0
+                    }
+                    Render-Menu
                 }
-            }
-            "DownArrow" {
-                if ($selectedIndex -lt ($Items.Count - 1)) {
-                    $selectedIndex++
+                "Enter" {
+                    [Console]::SetCursorPosition(0, $menuTop + 3 + $Items.Count)
+                    return $Items[$selectedIndex]
                 }
-                else {
-                    $selectedIndex = 0
+                "Escape" {
+                    [Console]::SetCursorPosition(0, $menuTop + 3 + $Items.Count)
+                    return $null
                 }
-            }
-            "Enter" {
-                return $Items[$selectedIndex]
-            }
-            "Escape" {
-                return $null
-            }
-            "Q" {
-                return $null
+                "Q" {
+                    [Console]::SetCursorPosition(0, $menuTop + 3 + $Items.Count)
+                    return $null
+                }
             }
         }
+    }
+    finally {
+        [Console]::CursorVisible = $previousCursorVisible
     }
 }
 
