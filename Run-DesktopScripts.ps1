@@ -337,31 +337,27 @@ function Select-Script {
     )
 
     $items = @(
-        [PSCustomObject] @{
-            Label = "Edit workspace | Current path | Config"
-            Parts = @(
-                [PSCustomObject] @{ Text = "Edit workspace"; Color = "White" }
-                [PSCustomObject] @{ Text = " | "; Color = "DarkGray" }
-                [PSCustomObject] @{ Text = $WorkspaceRoot; Color = "Cyan" }
-                [PSCustomObject] @{ Text = " | "; Color = "Magenta" }
-                [PSCustomObject] @{ Text = "Config"; Color = "Magenta" }
-            )
-            Value = [PSCustomObject] @{ Type = "EditWorkspace" }
-        }
         foreach ($script in $Scripts) {
             $whatIfText = if ($script.SupportsWhatIf) { "Dry-run available" } else { "No dry-run" }
             $whatIfColor = if ($script.SupportsWhatIf) { "Yellow" } else { "DarkGray" }
             [PSCustomObject] @{
-                Label = "{0} | {1} | {2}" -f $script.Description, $script.Name, $whatIfText
+                Label = "{0} | {1}" -f $script.Description, $whatIfText
                 Parts = @(
                     [PSCustomObject] @{ Text = $script.Description; Color = "White" }
-                    [PSCustomObject] @{ Text = " | "; Color = "DarkGray" }
-                    [PSCustomObject] @{ Text = $script.Name; Color = "Cyan" }
                     [PSCustomObject] @{ Text = " | "; Color = "DarkGray" }
                     [PSCustomObject] @{ Text = $whatIfText; Color = $whatIfColor }
                 )
                 Value = [PSCustomObject] @{ Type = "Script"; Script = $script }
             }
+        }
+        [PSCustomObject] @{
+            Label = "Edit workspace | Config"
+            Parts = @(
+                [PSCustomObject] @{ Text = "Edit workspace"; Color = "White" }
+                [PSCustomObject] @{ Text = " | "; Color = "DarkGray" }
+                [PSCustomObject] @{ Text = "Config"; Color = "Magenta" }
+            )
+            Value = [PSCustomObject] @{ Type = "EditWorkspace" }
         }
     )
 
