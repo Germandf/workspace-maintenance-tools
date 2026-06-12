@@ -25,10 +25,17 @@ function Get-ScriptDescription {
     switch ($Name) {
         "Checkout-MainOrMaster-Repos.ps1" { "Checkout main/master" }
         "Clean-GitBranchesAndStaleWorktrees.ps1" { "Clean branches" }
+        "Install-WorkspaceMaintenanceShortcuts.ps1" { "Install shortcuts" }
         "Pull-MainOrMaster-Repos.ps1" { "Pull updates" }
         "Kill-DotNetHost.ps1" { "Stop .NET hosts" }
         default { "Run script" }
     }
+}
+
+function Test-ShortcutCommandName {
+    param([string] $CommandName)
+
+    $CommandName -match "^[A-Za-z_][A-Za-z0-9_-]*$"
 }
 
 function Test-SupportsWhatIf {
@@ -376,6 +383,19 @@ function Select-Script {
 
     $items = @(
         foreach ($script in $Scripts) {
+            if ($script.Name -eq "Install-WorkspaceMaintenanceShortcuts.ps1") {
+                [PSCustomObject] @{
+                    Label = "Install shortcuts | Setup"
+                    Parts = @(
+                        [PSCustomObject] @{ Text = "Install shortcuts"; Color = "White" }
+                        [PSCustomObject] @{ Text = " | "; Color = "DarkGray" }
+                        [PSCustomObject] @{ Text = "Setup"; Color = "Magenta" }
+                    )
+                    Value = [PSCustomObject] @{ Type = "InstallShortcuts"; Script = $script }
+                }
+                continue
+            }
+
             $whatIfText = if ($script.SupportsWhatIf) { "Dry-run available" } else { "No dry-run" }
             $whatIfColor = if ($script.SupportsWhatIf) { "Yellow" } else { "DarkGray" }
             [PSCustomObject] @{
@@ -405,6 +425,58 @@ function Select-Script {
     }
 
     $selected.Value
+}
+
+function Select-ShortcutInstallMode {
+    $items = @(
+        [PSCustomObject] @{
+            Label = "Use default commands | workspace-maintenance + wm"
+            Parts = @(
+                [PSCustomObject] @{ Text = "Use default commands"; Color = "White" }
+                [PSCustomObject] @{ Text = " | "; Color = "DarkGray" }
+                [PSCustomObject] @{ Text = "workspace-maintenance + wm"; Color = "Green" }
+            )
+            Value = [PSCustomObject] @{ Type = "Default" }
+        }
+        [PSCustomObject] @{
+            Label = "Override command name | Custom"
+            Parts = @(
+                [PSCustomObject] @{ Text = "Override command name"; Color = "White" }
+                [PSCustomObject] @{ Text = " | "; Color = "DarkGray" }
+                [PSCustomObject] @{ Text = "Custom"; Color = "Yellow" }
+            )
+            Value = [PSCustomObject] @{ Type = "Custom" }
+        }
+    )
+
+    $selected = Invoke-ArrowMenu -Title "Install shortcuts" -Items $items
+    if (-not $selected) {
+        return $null
+    }
+
+    $selected.Value
+}
+
+function Read-ShortcutCommandName {
+    while ($true) {
+        Clear-Host
+        Write-Info "Custom shortcut"
+        Write-Host ""
+        $commandName = Read-EditableInput -Prompt "Enter the command name. Press Esc to cancel." -DefaultValue ""
+
+        if (-not $commandName) {
+            return $null
+        }
+
+        if (Test-ShortcutCommandName -CommandName $commandName) {
+            return $commandName
+        }
+
+        Write-Warn "Invalid command name: $commandName"
+        Write-Host "Use letters, numbers, hyphens, or underscores. Start with a letter or underscore." -ForegroundColor DarkGray
+        Write-Host "Press any key to try again..." -ForegroundColor DarkGray
+        [void] [Console]::ReadKey($true)
+    }
 }
 
 function Select-ExecutionMode {
@@ -481,6 +553,59 @@ function Invoke-SelectedScript {
     [void] [Console]::ReadKey($true)
 }
 
+function Invoke-ShortcutInstaller {
+    param([object] $Script)
+
+    $installMode = Select-ShortcutInstallMode
+    if (-not $installMode) {
+        Write-Info "Exiting."
+        exit 0
+    }
+
+    $arguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        $Script.FullName
+    )
+
+    if ($installMode.Type -eq "Custom") {
+        $commandName = Read-ShortcutCommandName
+        if (-not $commandName) {
+            Write-Info "Exiting."
+            exit 0
+        }
+
+        $arguments += @("-Name", $commandName)
+    }
+
+    Write-Info ""
+    Write-Info "Running: $($Script.Name)"
+    if ($installMode.Type -eq "Custom") {
+        Write-Info "Command name: $commandName"
+    }
+    else {
+        Write-Info "Command names: workspace-maintenance, wm"
+    }
+    Write-Info ""
+
+    & powershell @arguments
+    $exitCode = $LASTEXITCODE
+
+    Write-Info ""
+    if ($exitCode -eq 0) {
+        Write-Info "Finished successfully."
+    }
+    else {
+        Write-Warn "Script finished with exit code $exitCode."
+    }
+
+    Write-Host ""
+    Write-Host "Press any key to continue..." -ForegroundColor DarkGray
+    [void] [Console]::ReadKey($true)
+}
+
 if (-not (Test-Path -LiteralPath $ScriptsFolder -PathType Container)) {
     throw "Scripts folder does not exist: $ScriptsFolder"
 }
@@ -514,14 +639,19 @@ while ($true) {
         continue
     }
 
-    $selectedScript = $selection.Script
-    $mode = Select-ExecutionMode -SupportsWhatIf $selectedScript.SupportsWhatIf
-    if (-not $mode) {
-        Write-Info "Exiting."
-        exit 0
+    if ($selection.Type -eq "InstallShortcuts") {
+        Invoke-ShortcutInstaller -Script $selection.Script
     }
+    else {
+        $selectedScript = $selection.Script
+        $mode = Select-ExecutionMode -SupportsWhatIf $selectedScript.SupportsWhatIf
+        if (-not $mode) {
+            Write-Info "Exiting."
+            exit 0
+        }
 
-    Invoke-SelectedScript -Script $selectedScript -Mode $mode -WorkspaceRoot $workspaceRoot
+        Invoke-SelectedScript -Script $selectedScript -Mode $mode -WorkspaceRoot $workspaceRoot
+    }
 
     Write-Info ""
     $againItems = @(

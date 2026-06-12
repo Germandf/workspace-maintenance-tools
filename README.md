@@ -23,6 +23,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Invoke-WorkspaceMaintenanc
 
 After cloning the repository, run this once from the repository folder.
 
+You can also open the main menu and choose `Install shortcuts`. The menu asks whether to use the default command names or enter a custom name.
+
 To choose your own command name:
 
 ```powershell
