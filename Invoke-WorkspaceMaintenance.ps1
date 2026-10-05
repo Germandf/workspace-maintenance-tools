@@ -24,7 +24,9 @@ function Get-ScriptDescription {
 
     switch ($Name) {
         "Checkout-MainOrMaster-Repos.ps1" { "Checkout main/master" }
+        "Clean-BuildOutputs.ps1" { "Clean bin/obj folders" }
         "Clean-GitBranchesAndStaleWorktrees.ps1" { "Clean branches" }
+        "Clean-NuGetCaches.ps1" { "Clear NuGet caches" }
         "Install-WorkspaceMaintenanceShortcuts.ps1" { "Install shortcuts" }
         "Pull-MainOrMaster-Repos.ps1" { "Pull updates" }
         "Kill-DotNetHost.ps1" { "Stop .NET hosts" }

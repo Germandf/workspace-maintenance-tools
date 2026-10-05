@@ -7,7 +7,9 @@ Small PowerShell toolkit for running local workspace maintenance scripts from an
 - `Invoke-WorkspaceMaintenance.ps1`: interactive menu. Stores the selected workspace path in `%APPDATA%\WorkspaceMaintenanceTools\config.json`.
 - `Install-WorkspaceMaintenanceShortcuts.ps1`: installs PowerShell profile shortcuts so the menu can be opened from any terminal.
 - `Checkout-MainOrMaster-Repos.ps1`: checks out `main`, falling back to `master`, for primary repositories.
+- `Clean-BuildOutputs.ps1`: deletes .NET `bin` and `obj` folders under the workspace, including worktrees. Only folders next to a project file (`*.csproj`, `*.fsproj`, ...) are removed, and folders containing Git-tracked files are skipped. They are regenerated on the next build.
 - `Clean-GitBranchesAndStaleWorktrees.ps1`: deletes local branches except `main` and `master`, and prunes stale worktree records.
+- `Clean-NuGetCaches.ps1`: clears every NuGet local cache (`dotnet nuget locals all --clear`) and the contents of extra cache folders passed with `-ExtraCachePath` (default: `C:\RamNuget`, skipped if missing). Packages are downloaded again on the next restore.
 - `Pull-MainOrMaster-Repos.ps1`: fast-forward pulls `main` or `master` from `upstream`, falling back to `origin`.
 - `Kill-DotNetHost.ps1`: stops running .NET Host processes.
 
@@ -72,4 +74,4 @@ To use the shortcuts in the current terminal without reopening it, reload your p
 . $PROFILE
 ```
 
-The Git scripts accept `-Root` and `-WhatIf` directly when run individually.
+The Git and build-output scripts accept `-Root` and `-WhatIf` directly when run individually. The cleanup scripts report how much space each folder uses, so run them with `-WhatIf` first to preview what would be freed. Close Visual Studio (or use `Stop .NET hosts`) before cleaning so no files are locked.
